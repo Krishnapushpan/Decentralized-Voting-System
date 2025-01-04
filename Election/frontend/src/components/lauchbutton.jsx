@@ -8,7 +8,7 @@ const LauchButton = () => {
           href="/addlauch"
           className="text-white tracking-wider text-xl font-extrabold hover:text-2xl transition-all"
         >
-          LAUNCH VOTING
+          LAUNCH ELECTION
         </a>
       </div>
     </div>
