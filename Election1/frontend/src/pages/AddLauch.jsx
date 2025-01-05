@@ -37,7 +37,6 @@ const AddLaunch = () => {
 
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
-        const walletAddress = await signer.getAddress();
         const contractABI = ABI.abi;
         const contractAddress = address["ElectModule#Voting"];
         const contract = new ethers.Contract(contractAddress, contractABI, signer);
@@ -47,39 +46,33 @@ const AddLaunch = () => {
         const durationInMinutes = hours * 60 + minutes;
 
         if (!description.trim()) {
-            alert("Please provide a description for the election.");
-            return;
-        }
-
-        if (candidates.length < 2) {
-            alert("Please provide at least two valid candidates.");
-            return;
-        }
-
-        if (isNaN(durationInMinutes) || durationInMinutes <= 0) {
-            alert("Please set a valid timer.");
-            return;
-        }
-
-        // Fetch the current nonce for the wallet
-        const currentNonce = await provider.getTransactionCount(walletAddress);
-
-        const tx = await contract.launchElection(description, candidates, durationInMinutes, {
-            nonce: currentNonce,
-        });
-
-        await tx.wait(); // Wait for the transaction to be mined
+          alert("Please provide a description for the election.");
+          return;
+      }
+      
+      if (candidates.length < 2) {
+          alert("Please provide at least two valid candidates.");
+          return;
+      }
+      
+      if (isNaN(durationInMinutes) || durationInMinutes <= 0) {
+        alert("Please set a valid timer.");
+        return;
+    }
+      
+        const tx = await contract.launchElection(description, candidates, durationInMinutes);
+        await tx.wait();
 
         alert("Election launched successfully!");
 
         // Navigate to home page after successful launch
         navigate("/"); // Assuming "/" is the home route
-    } catch (error) {
+    } 
+      catch (error) {
         console.error("Error launching election:", error);
         alert(`Error launching election: ${error.message || error.reason || "Unknown error"}`);
     }
-}
-
+  }
 
   return (
     <>
@@ -93,7 +86,7 @@ const AddLaunch = () => {
             CONNECT TO METAMASK
           </button>
         </div>
-        <div className="ml-4 mt-8">
+        <div className="ml-4 mt-6">
           <p className="text-lg font-bold text-blue-600">
             {signerAddress ? `Connected: ${signerAddress}` : "Not Connected"}
           </p>

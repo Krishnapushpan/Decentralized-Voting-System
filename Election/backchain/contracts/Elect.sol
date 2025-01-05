@@ -20,8 +20,10 @@ contract Voting {
     uint256[] public electionIDs; // Array to keep track of all election IDs
     address owner;
     uint256 public nextElectionID = 1; // Starting from 1
-
-    mapping(address => bool) public voters;
+    mapping(address => mapping(uint256 => bool)) public voters;
+    // mapping(address => mapping(uint256 => bool)) public voters; // Tracks voters and their participation in elections
+    // mapping(bytes32 => bool) public electionVoterMap; // Mapping for election ID and voter address
+    mapping(address => mapping(uint256 => bool)) public electionVoterMap; // Mapping to track voters and their participation in elections
 
     constructor() {
         owner = msg.sender; // The contract deployer is the owner
@@ -36,7 +38,7 @@ contract Voting {
         string memory _description,
         string[] memory _candidateNames,
         uint256 _durationInMinutes
-    ) public onlyOwner {
+    ) public {
         require(_candidateNames.length > 0, "At least one candidate is required.");
 
         Election storage newElection = electionDetails[nextElectionID];
@@ -53,6 +55,50 @@ contract Voting {
 
         electionIDs.push(nextElectionID); // Add the election ID to the array
         nextElectionID++;
+    }
+
+function vote(uint256 _electionID, uint256 _candidateIndex) public {
+    require(_electionID > 0 && _electionID < nextElectionID, "Election ID does not exist.");
+
+    Election storage election = electionDetails[_electionID];
+    require(block.timestamp >= election.votingStart, "Voting has not started yet.");
+    require(block.timestamp <= election.votingEnd, "Voting period has ended.");
+
+    require(!electionVoterMap[msg.sender][_electionID], "You have already voted in this election.");
+
+    require(_candidateIndex < election.candidates.length, "Invalid candidate index.");
+
+    election.candidates[_candidateIndex].voteCount += 1;
+    electionVoterMap[msg.sender][_electionID] = true;
+
+    // emit Voted(msg.sender, _electionID, _candidateIndex);
+}
+
+    function getAllElectionDetails() public view returns (Election[] memory) {
+        Election[] memory allElections = new Election[](electionIDs.length);
+
+        for (uint256 i = 0; i < electionIDs.length; i++) {
+            allElections[i] = electionDetails[electionIDs[i]];
+        }
+
+        return allElections;
+    }
+
+    function getCandidateDetailsByElectionID(uint256 _electionID) public view returns (string[] memory, uint256[] memory) {
+        require(_electionID > 0 && _electionID < nextElectionID, "Election ID does not exist.");
+
+        Election storage election = electionDetails[_electionID];
+        uint256 candidateCount = election.candidates.length;
+
+        string[] memory names = new string[](candidateCount);
+        uint256[] memory voteCounts = new uint256[](candidateCount);
+
+        for (uint256 i = 0; i < candidateCount; i++) {
+            names[i] = election.candidates[i].name;
+            voteCounts[i] = election.candidates[i].voteCount;
+        }
+
+        return (names, voteCounts);
     }
 
     function getTimeLeftFormatted(uint256 _electionID) public view returns (string memory) {
@@ -78,7 +124,6 @@ contract Voting {
     }
 
     function _toTwoDigits(uint256 value) internal pure returns (string memory) {
-        // Ensure the value is two digits (e.g., 01, 09, 10)
         if (value < 10) {
             return string(abi.encodePacked("0", _uintToString(value)));
         }
@@ -104,57 +149,66 @@ contract Voting {
         return string(buffer);
     }
 
-    function getAllElectionDetails() public view returns (Election[] memory) {
-        Election[] memory allElections = new Election[](electionIDs.length);
+    // event Voted(address indexed voter, uint256 electionID, uint256 candidateIndex);
 
-        for (uint256 i = 0; i < electionIDs.length; i++) {
-            allElections[i] = electionDetails[electionIDs[i]];
+    // function voting(uint256 _electionID, uint256 _candidateIndex) public onlyOwner() {
+    // require(_electionID > 0 && _electionID < nextElectionID, "Election ID does not exist.");
+    
+    // Election storage election = electionDetails[_electionID];
+    // require(block.timestamp >= election.votingStart, "Voting has not started yet.");
+    // require(block.timestamp <= election.votingEnd, "Voting period has ended.");
+
+    // require(!voters[msg.sender][_electionID], "You have already voted in this election.");
+
+    // require(_candidateIndex < election.candidates.length, "Invalid candidate index.");
+
+    // election.candidates[_candidateIndex].voteCount += 1;
+    // voters[msg.sender][_electionID] = true;
+
+    // emit Voted(msg.sender, _electionID, _candidateIndex);
+// }
+// function getElectionsVotedByUser() public view returns (uint256[] memory) {
+//     uint256 electionCount = nextElectionID - 1; // Adjust to exclude the nextElectionID counter
+//     uint256[] memory electionsVoted = new uint256[](electionCount);
+//     uint256 index = 0;
+
+//     for (uint256 i = 1; i <= electionCount; i++) {
+//         if (electionVoterMap[msg.sender][i]) {
+//             electionsVoted[index] = i;
+//             index++;
+//         }
+//     }
+
+//     // Resize the array to the actual number of elections voted
+//     assembly {
+//         mstore(electionsVoted, index)
+//     }
+
+//     return electionsVoted;
+// }
+function getElectionsVotedByUser() public view returns (uint256[] memory) {
+    uint256 electionCount = nextElectionID - 1; // Total elections
+    uint256 count = 0;
+
+    // First pass: Count the number of elections voted
+    for (uint256 i = 1; i <= electionCount; i++) {
+        if (electionVoterMap[msg.sender][i]) {
+            count++;
         }
-
-        return allElections;
-    }
-    function getCandidateDetailsByElectionID(uint256 _electionID) public view returns (string[] memory, uint256[] memory) {
-    require(_electionID > 0 && _electionID < nextElectionID, "Election ID does not exist.");
-
-    Election storage election = electionDetails[_electionID];
-    uint256 candidateCount = election.candidates.length;
-
-    string[] memory names = new string[](candidateCount);
-    uint256[] memory voteCounts = new uint256[](candidateCount);
-
-    for (uint256 i = 0; i < candidateCount; i++) {
-        names[i] = election.candidates[i].name;
-        voteCounts[i] = election.candidates[i].voteCount;
     }
 
-    return (names, voteCounts);
+    // Allocate memory for the result
+    uint256[] memory electionsVoted = new uint256[](count);
+    uint256 index = 0;
+
+    // Second pass: Populate the array
+    for (uint256 i = 1; i <= electionCount; i++) {
+        if (electionVoterMap[msg.sender][i]) {
+            electionsVoted[index] = i;
+            index++;
+        }
+    }
+
+    return electionsVoted;
 }
-event Voted(address indexed voter, uint256 electionID, uint256 candidateIndex);
-
-function vote(uint256 _electionID, uint256 _candidateIndex) public {
-    // Ensure the election exists
-    require(_electionID > 0 && _electionID < nextElectionID, "Election ID does not exist.");
-
-    Election storage election = electionDetails[_electionID];
-
-    // Check if voting is within the allowed time
-    require(block.timestamp >= election.votingStart, "Voting has not started yet.");
-    require(block.timestamp <= election.votingEnd, "Voting period has ended.");
-
-    // Ensure the voter has not voted in this election
-    require(!voters[msg.sender], "You have already voted.");
-
-    // Ensure the candidate index is valid
-    require(_candidateIndex < election.candidates.length, "Invalid candidate index.");
-
-    // Update the candidate's vote count
-    election.candidates[_candidateIndex].voteCount += 1;
-
-    // Mark the voter as having voted
-    voters[msg.sender] = true;
-
-    // Emit an event for voting activity (optional, but good for tracking votes off-chain)
-    emit Voted(msg.sender, _electionID, _candidateIndex);
-}
-
-}
+ }

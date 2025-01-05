@@ -1,216 +1,233 @@
-import React, { useState,useEffect} from 'react'
+import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { ethers } from "ethers";
+import { ethers } from 'ethers';
 import ABI from "../assets/Voting.json";
 import address from "../assets/deployed_addresses.json";
-import Hero from '../components/hero'
-import sideimg from '../assets/images/vote7.png'
-const votenow = () => {
-    const [signerAddress, setSignerAddress] = useState("");
+import Hero from "../components/hero";
+import sideimg from "../assets/images/vote7.png";
+
+const Votenow = () => {
     const { electionID } = useParams();
     const [candidates, setCandidates] = useState([]);
     const [timer, setTimer] = useState("00:00:00");
-    const [selectedIndex, setSelectedIndex] = useState(""); // State to store selected candidate index
-    const [feedback, setFeedback] = useState(""); // State for user feedback
-  
+    const [selectedIndex, setSelectedIndex] = useState("");
+    const [feedback, setFeedback] = useState("");
+    const [isVoting, setIsVoting] = useState(false);
+    const [signerAddress, setSignerAddress] = useState("");
 
-    async function connectToMetamask() {
+  
+  // Connect to MetaMask
+  async function connectToMetamask() {
+    try {
+        if (!window.ethereum) {
+            setFeedback("MetaMask is not installed! Please install MetaMask to continue.");
+            return;
+        }
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const signerAddress = await signer.getAddress();
+        setSignerAddress(signerAddress);
+        setFeedback(""); // Clear feedback upon successful connection
+    } catch (error) {
+        console.error("Error connecting to MetaMask:", error);
+        setFeedback("Failed to connect to MetaMask. Please try again.");
+    }
+}
+    // Helper to format numbers as two digits
+    function _toTwoDigits(value) {
+        return value.toString().padStart(2, "0");
+    }
+
+    // Fetch candidates and their vote counts
+    async function fetchCandidates() {
         try {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            const contractABI = ABI.abi;
+            const contractAddress = address["ElectModule#Voting"];
+            const contract = new ethers.Contract(contractAddress, contractABI, provider);
+
+            const [names, voteCounts] = await contract.getCandidateDetailsByElectionID(electionID);
+            const processedCandidates = names.map((name, index) => ({
+                index: index + 1,
+                name,
+                votes: Number(voteCounts[index]),
+            }));
+            setCandidates(processedCandidates);
+        } catch (error) {
+            console.error("Error fetching candidates:", error);
+        }
+    }
+
+    // Calculate and display the timer
+    async function calculateTimer() {
+        try {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            const contractABI = ABI.abi;
+            const contractAddress = address["ElectModule#Voting"];
+            const contract = new ethers.Contract(contractAddress, contractABI, provider);
+
+            const electionDetails = await contract.electionDetails(electionID);
+            const votingEnd = Number(electionDetails[3]);
+            const currentTime = Math.floor(Date.now() / 1000);
+
+            if (currentTime >= votingEnd) {
+                setTimer("00:00:00");
+            } else {
+                const timeLeft = votingEnd - currentTime;
+                const hours = Math.floor(timeLeft / 3600);
+                const minutes = Math.floor((timeLeft % 3600) / 60);
+                const seconds = timeLeft % 60;
+
+                setTimer(`${_toTwoDigits(hours)}:${_toTwoDigits(minutes)}:${_toTwoDigits(seconds)}`);
+            }
+        } catch (error) {
+            console.error("Error calculating timer:", error);
+            setTimer("Error fetching timer");
+        }
+    }
+
+    async function castVote() {
+      try {
+          setIsVoting(true); // Disable the button during voting
+  
+          // Check if MetaMask is installed
+          if (!window.ethereum) {
+              setFeedback("MetaMask is not installed!");
+              setIsVoting(false);
+              return;
+          }
+  
+          // Request account access
+          await window.ethereum.request({ method: "eth_requestAccounts" });
+  
+          // Initialize ethers.js provider and signer
           const provider = new ethers.BrowserProvider(window.ethereum);
           const signer = await provider.getSigner();
-          const signerAddress = await signer.getAddress();
-          setSignerAddress(signerAddress);
-        } catch (error) {
-          console.error("Error connecting to MetaMask:", error);
-          alert("Failed to connect to MetaMask. Please try again.");
-        }
+  
+          // Define contract ABI and address
+          const contractABI = ABI.abi;
+          const contractAddress = address["ElectModule#Voting"];
+          const contract = new ethers.Contract(contractAddress, contractABI, signer);
+  
+          // Log the voting data
+          console.log("Voting with data:", {
+              electionID,
+              selectedIndex
+          });
+  
+          // Cast the vote with a specified gas limit
+          const tx = await contract.vote(
+              Number(electionID),
+              Number(selectedIndex) - 1, // Adjust index for solidity zero-based indexing
+              {
+                  gasLimit: 7920027 // Adjust the gas limit if necessary
+              }
+          );
+  
+          await tx.wait(); // Wait for the transaction to be mined
+  
+          setFeedback("Vote successfully cast!");
+          fetchCandidates(); // Refresh the candidate data
+      } catch (error) {
+          console.error("Error casting vote:", error);
+  
+          // Enhanced error handling for different error codes
+          if (error.code === -32603) {
+              setFeedback("Internal JSON-RPC error. Please try again.");
+          } else if (error.code === 4001) {
+              setFeedback("Transaction rejected by the user.");
+          } else if (error.code === -32000) {
+              setFeedback("Insufficient funds for gas price and value.");
+          } else if (error.data && error.data.message) {
+              // Custom error messages from the contract, if any
+              setFeedback(`Error: ${error.data.message}`);
+          } else {
+              setFeedback("Error casting vote. Please check the details and try again.");
+          }
+      } finally {
+          setIsVoting(false); // Re-enable the button after voting
       }
-
-  function _toTwoDigits(value) {
-    return value.toString().padStart(2, "0");
-  }
-  async function fetchCandidates() {
-    try {
-      if (!window.ethereum) {
-        console.error("MetaMask is not installed!");
-        return;
-      }
-  
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-  
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const contractABI = ABI.abi;
-      const contractAddress = address["ElectModule#Voting"];
-      const contract = new ethers.Contract(contractAddress, contractABI, provider);
-  
-      const [names, voteCounts] = await contract.getCandidateDetailsByElectionID(electionID);
-      
-      // Debugging outputs
-      console.log("Candidate Names:", names);
-      console.log("Vote Counts:", voteCounts);
-  
-      const processedCandidates = names.map((name, index) => ({
-        index: index + 1,
-        name,
-        votes: Number(voteCounts[index]),
-      }));
-  
-      setCandidates(processedCandidates);
-    } catch (error) {
-      console.error("Error fetching candidate details:", error);
-    }
-  }
-  
-  async function calculateTimer() {
-    try {
-      if (!window.ethereum) {
-        console.error("MetaMask is not installed!");
-        return;
-      }
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const contractABI = ABI.abi;
-      const contractAddress = address["ElectModule#Voting"];
-      const contract = new ethers.Contract(contractAddress, contractABI, provider);
-
-      const electionDetails = await contract.electionDetails(electionID);
-      const votingEnd = Number(electionDetails[3]);
-      const currentTime = Math.floor(Date.now() / 1000);
-
-      if (currentTime >= votingEnd) {
-        setTimer("00:00:00");
-      } else {
-        const timeLeft = votingEnd - currentTime;
-        const hours = Math.floor(timeLeft / 3600);
-        const minutes = Math.floor((timeLeft % 3600) / 60);
-        const seconds = timeLeft % 60;
-
-        setTimer(`${_toTwoDigits(hours)}:${_toTwoDigits(minutes)}:${_toTwoDigits(seconds)}`);
-      }
-    } catch (error) {
-      console.error("Error calculating timer:", error);
-    }
-  }
-   // Function to cast a vote
-   async function castVote() {
-    if (selectedIndex === "") {
-      setFeedback("Please enter a candidate's index number.");
-      return;
-    }
-  
-    try {
-      if (!window.ethereum) {
-        setFeedback("MetaMask is not installed!");
-        return;
-      }
-  
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-  
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner(); // Use signer for transaction
-      const contractABI = ABI.abi;
-      const contractAddress = address["ElectModule#Voting"];
-      const contract = new ethers.Contract(contractAddress, contractABI, signer);
-  
-      // Call the vote function
-      const tx = await contract.vote(Number(electionID), Number(selectedIndex) - 1); // Index adjusted to 0-based
-      await tx.wait(); // Wait for the transaction to be mined
-  
-      setFeedback("Vote successfully cast!");
-      fetchCandidates(); // Refresh the candidate list
-    } catch (error) {
-      // Check if the error contains a revert reason
-      if (error.reason) {
-        setFeedback(error.reason); // Display the specific error reason
-      } else if (error.data && error.data.message) {
-        setFeedback(error.data.message); // Handle fallback for other errors
-      } else {
-        setFeedback("Error casting vote. Please try again."); // Generic fallback message
-      }
-  
-      console.error("Error casting vote:", error);
-    }
   }
   
-  useEffect(() => {
-    fetchCandidates();
-    const interval = setInterval(() => calculateTimer(), 1000);
-    return () => clearInterval(interval);
-  }, [electionID]);
 
-    
-  return (
-    <div>
-        <Hero />
-        {/* Connect Button */}
-      <div className="w-full ml-[120px] mt-[40px] flex space-x-12" >
-        <button onClick={connectToMetamask}
-          className="w-[400px] bg-gradient-to-r from-blue-500 to-blue-700 text-white text-lg font-bold py-3 rounded-md hover:from-blue-600 hover:to-blue-800" >
-          CONNECT TO METAMASK </button>
-        <p className="mt-4  w-[800px]  text-blue-600 font-semibold">
-          {signerAddress ? `Connected: ${signerAddress}` : "Not Connected"} </p>
-      </div>
-      <div className='flex space-x-14 '>
-        <div className='ml-[100px]'>
-         {/* Timer Section */}
-         <div className="w-[400px] m-4 bg-gradient-to-r from-blue-500 to-blue-700 text-white text-lg font-bold py-3 rounded-md text-center">
+    // Fetch candidates and set up the timer
+    useEffect(() => {
+        fetchCandidates();
+        const interval = setInterval(calculateTimer, 1000);
+        return () => clearInterval(interval);
+    }, [electionID]);
+
+    return (
+        <div>
+            <Hero />
+            <div className="ml-[60px] flex">
+                <div className="h-[50px] w-[400px] mt-6 bg-gradient-to-r from-blue-500 to-blue-700 p-2 rounded-md flex justify-center ml-[40px]">
+                    <button
+                        onClick={connectToMetamask}
+                        className="text-white tracking-wider text-2xl font-extrabold"
+                    >
+                        CONNECT TO METAMASK
+                    </button>
+                </div>
+                <div className="ml-4 mt-8">
+                    <p className="text-lg font-bold text-blue-600">
+                        {signerAddress ? `Connected: ${signerAddress}` : "Not Connected"}
+                    </p>
+                </div>
+            </div>
+            <div className="flex space-x-14">
+            <div className="ml-[100px]">
+    <div className="w-[400px] mt-4 mb-4 bg-gradient-to-r from-blue-500 to-blue-700 text-white text-lg  py-3 rounded-md text-center">
         Time Left: {timer}
-      </div>
-      {/* Candidate List */}
-      <div className="w-[600px] m-4 overflow-x-auto">
-        <table className="min-w-[500px] border-collapse border border-gray-300 shadow-md rounded-lg">
-          <thead className="bg-gradient-to-r from-blue-500 to-blue-700 text-white">
-            <tr>
-              <th className="px-6 py-3 text-center">Index No</th>
-              <th className="px-6 py-3 text-center">Candidate Name</th>
-              <th className="px-6 py-3 text-center">Votes</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {candidates.map((candidate) => (
-              <tr key={candidate.index} className="hover:bg-gray-100">
-                <td className="px-6 py-4 text-center">{candidate.index}</td>
-                <td className="px-6 py-4 text-center">{candidate.name}</td>
-                <td className="px-6 py-4 text-center">{candidate.votes}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-        {/* Voting Form */}
-      <div className="m-4 p-6 w-[500px] bg-white shadow-lg rounded-lg border border-gray-200">
-        <p className="text-gray-800 text-lg font-medium mb-4">
-          Cast your vote by entering the candidate's index number below.
-        </p>
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <input
-            type="text"
-            value={selectedIndex}
-            onChange={(e) => setSelectedIndex(e.target.value)}
-            className="w-full sm:w-1/2 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-700"
-            placeholder="Enter index no"
-          />
-          <button
-            onClick={castVote}
-            type="button"
-            className="px-6 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 transition duration-200 text-lg font-semibold"
-          >
-            Confirm Vote
-          </button>
-        </div>
-        {feedback && (
-          <p className="mt-4 text-sm text-center text-red-500">
-            {feedback}
-          </p>
-        )}
-      </div>
-      </div>
-      <div>
-        <img src={sideimg} alt="" className='w-[800px] ml-[100px] h-[600px]'/>
-      </div>
-      </div>
     </div>
-  )
-}
+    <table className="min-w-[600px] min-h-[250px] border-collapse border border-gray-300 shadow-md rounded-lg">
+    <thead className="bg-gradient-to-r from-blue-500 to-blue-700 text-white h-12">
+        <tr>
+            <th className="border border-gray-300 px-4 py-2 text-center">Index No</th>
+            <th className="border border-gray-300 px-4 py-2 text-center">Candidate Name</th>
+            <th className="border border-gray-300 px-4 py-2 text-center">Votes</th>
+        </tr>
+    </thead>
+    <tbody>
+        {candidates.map(candidate => (
+            <tr key={candidate.index}>
+                <td className="border border-gray-300 px-4 py-2 text-center">{candidate.index}</td>
+                <td className="border border-gray-300 px-4 py-2 text-center">{candidate.name}</td>
+                <td className="border border-gray-300 px-4 py-2 text-center">{candidate.votes}</td>
+            </tr>
+        ))}
+    </tbody>
+</table>
 
-export default votenow
+
+    <div className="mt-4  flex flex-col shadow-md rounded-lg">
+    <p className="text-gray-800 font-semibold mt-4 p-4">Cast your vote for the candidate with index no:</p>
+    <input
+        className="border border-gray-300 rounded px-8 py-4 m-2"
+        value={selectedIndex}
+        onChange={(e) => setSelectedIndex(e.target.value)}
+        placeholder="Enter Candidate Index"
+        aria-label="Enter candidate index"
+    />
+    <button
+        onClick={castVote}
+        disabled={isVoting}
+        className={`m-4 ml-24 w-[400px] bg-gradient-to-r from-blue-500 to-blue-700  text-white text-lg font-bold py-3 rounded-md hover:from-blue-600 hover:to-blue-800 ${
+            isVoting ? "opacity-50 cursor-not-allowed" : ""
+        }`}
+    >
+        {isVoting ? "Voting..." : "Vote Now"}
+    </button>
+</div>
+
+    {feedback && <p className="text-red-500 font-semibold mt-2">{feedback}</p>}
+</div>
+
+                <img src={sideimg} alt="Voting side illustration" />
+            </div>
+        </div>
+    );
+};
+
+export default Votenow;

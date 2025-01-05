@@ -46,8 +46,7 @@ const Home = () => {
   }, []);
 
   return (
-    <>
-    
+    <div>
       <Hero />
       <Lauchbutton />
       <div className="pt-12 pl-8 flex space-x-12">
@@ -67,43 +66,40 @@ const Home = () => {
         </div>
         
         {/* Ongoing Elections */}
-        <div className="mt-2 w-[900px]">
-  <h2 className="text-2xl font-bold text-gray-800 mb-4">Ongoing Elections</h2>
-  <ul className="grid grid-cols-2 gap-4">
-    {elections.length > 0 ? (
-      elections.map((election, index) => (
-        <li
-          key={index}
-          className="bg-gray-100 p-4 rounded-lg shadow-sm flex flex-col items-center"
-        >
-          <div className="text-center">
-            <h3 className="text-lg font-bold text-gray-800">
-              Election ID: {election.electionID}
-            </h3>
-            <p className="text-gray-600">Description: {election.description}</p>
-          </div>
-          <div className="mt-6 w-full flex justify-center">
-            <div className="h-[50px] w-[400px] bg-gradient-to-r from-blue-500 to-blue-700 p-2 rounded-md flex justify-center">
-              <Link
-                to={`/votenow/${election.electionID}`} // Pass the electionID in the URL
-                className="text-white tracking-wider text-2xl font-extrabold"
-              >
-                Vote Now
-              </Link>
-            </div>
-          </div>
-        </li>
-      ))
-    ) : (
-      <p>No elections found.</p>
-    )}
-  </ul>
-</div>
-
+        <div className="mt-8 w-[900px]">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Ongoing Elections</h2>
+          <ul className="space-y-4">
+            {elections.length > 0 ? (
+              elections.map((election, index) => (
+                <li
+                  key={index}
+                  className="bg-gray-100 p-4 rounded-lg shadow-sm flex justify-between items-center"
+                >
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-800">
+                      Election ID: {election.electionID}
+                    </h3>
+                    <p className="text-gray-600">Description: {election.description}</p>
+                    <div className="ml-[170px] flex">
+                      <div className="h-[50px] w-[400px] mt-6 bg-gradient-to-r from-blue-500 to-blue-700 p-2 rounded-md flex justify-center ml-[40px]">
+                        <Link
+                          to={`/votenow/${election.electionID}`} // Pass the electionID in the URL
+                          className="text-white tracking-wider text-2xl font-extrabold"
+                        >
+                          Vote Now
+                        </Link>
+                      </div>
+                    </div>
+                  </div> 
+                </li>
+              ))
+            ) : (
+              <p>No elections found.</p>
+            )}
+          </ul>
+        </div>
       </div>
-
-
-          </>
+    </div>
   );
 };
 
