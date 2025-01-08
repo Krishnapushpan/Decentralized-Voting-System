@@ -7,9 +7,9 @@ module.exports = {
     localhost:{
       url:"http://127.0.0.1:8545/",
     },
-    // holesky:{
-    //   url:`https://eth-holesky.g.alchemy.com/v2/${process.env.apikey}`,
-    //   accounts:[process.env.privatekey]
-    // }
+    holesky:{
+      url:`https://eth-holesky.g.alchemy.com/v2/${process.env.apikey}`,
+      accounts:[process.env.privatekey]
+    }
   }
 };

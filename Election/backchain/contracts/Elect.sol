@@ -149,43 +149,7 @@ function vote(uint256 _electionID, uint256 _candidateIndex) public {
         return string(buffer);
     }
 
-    // event Voted(address indexed voter, uint256 electionID, uint256 candidateIndex);
-
-    // function voting(uint256 _electionID, uint256 _candidateIndex) public onlyOwner() {
-    // require(_electionID > 0 && _electionID < nextElectionID, "Election ID does not exist.");
-    
-    // Election storage election = electionDetails[_electionID];
-    // require(block.timestamp >= election.votingStart, "Voting has not started yet.");
-    // require(block.timestamp <= election.votingEnd, "Voting period has ended.");
-
-    // require(!voters[msg.sender][_electionID], "You have already voted in this election.");
-
-    // require(_candidateIndex < election.candidates.length, "Invalid candidate index.");
-
-    // election.candidates[_candidateIndex].voteCount += 1;
-    // voters[msg.sender][_electionID] = true;
-
-    // emit Voted(msg.sender, _electionID, _candidateIndex);
-// }
-// function getElectionsVotedByUser() public view returns (uint256[] memory) {
-//     uint256 electionCount = nextElectionID - 1; // Adjust to exclude the nextElectionID counter
-//     uint256[] memory electionsVoted = new uint256[](electionCount);
-//     uint256 index = 0;
-
-//     for (uint256 i = 1; i <= electionCount; i++) {
-//         if (electionVoterMap[msg.sender][i]) {
-//             electionsVoted[index] = i;
-//             index++;
-//         }
-//     }
-
-//     // Resize the array to the actual number of elections voted
-//     assembly {
-//         mstore(electionsVoted, index)
-//     }
-
-//     return electionsVoted;
-// }
+ 
 function getElectionsVotedByUser() public view returns (uint256[] memory) {
     uint256 electionCount = nextElectionID - 1; // Total elections
     uint256 count = 0;

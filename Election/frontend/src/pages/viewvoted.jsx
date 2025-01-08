@@ -117,7 +117,8 @@ const ViewVoted = () => {
 
     return (
         <div>
-            <Hero /><p class="text-green-600 ml-[180px] mt-12">Make sure you are connected to MetaMask.</p>
+            <Hero />
+            <p className="text-green-600 ml-[180px] mt-12">Make sure you are connected to MetaMask.</p>
             <div className="ml-[50px] flex">
                 <div className="h-[50px] w-[400px] mt-6 bg-gradient-to-r from-blue-500 to-blue-700 p-2 rounded-md flex justify-center ml-[130px]">
                     <button
@@ -133,48 +134,56 @@ const ViewVoted = () => {
                     </p>
                 </div>
             </div>
-            <div class="container mx-auto p-4">
-    <h2 class="text-2xl font-bold mb-4">Your Voted Elections</h2>
-    {feedback && <p class="text-green-600 mb-4">{feedback}</p>}
-    <ul class="grid grid-cols-3 gap-4">
-        {elections.map((election, index) => (
-            <li key={index} class="p-4 bg-gray-100 rounded-lg shadow-md">
-                <p class="text-lg font-medium"><strong>Election ID:</strong> {election.electionID}</p>
-                <p><strong>Description:</strong> {election.description}</p>
-                <p><strong>Voting Start:</strong> {new Date(election.votingStart * 1000).toLocaleString()}</p>
-                <p><strong>Voting End:</strong> {new Date(election.votingEnd * 1000).toLocaleString()}</p>
-                <button 
-                    onClick={() => fetchCandidates(election.electionID)} 
-                    class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
-                >
-                    View Candidates
-                </button>
-                {electionID === election.electionID && candidates.length > 0 && (
-                    <div class="col-span-3 mt-4">
-                        <table class="min-w-full border-collapse border border-gray-300 shadow-md rounded-lg">
-                            <thead class="bg-gradient-to-r from-blue-500 to-blue-700 text-white">
-                                <tr>
-                                    <th class="border border-gray-300 p-2">Index No</th>
-                                    <th class="border border-gray-300 p-2">Candidate Name</th>
-                                    <th class="border border-gray-300 p-2">Votes</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {candidates.map(candidate => (
-                                    <tr key={candidate.index}>
-                                        <td class="border border-gray-300 p-2">{candidate.index}</td>
-                                        <td class="border border-gray-300 p-2">{candidate.name}</td>
-                                        <td class="border border-gray-300 p-2">{candidate.votes}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </li>
-        ))}
-    </ul>
-</div>
+            <div className="container mx-auto p-4">
+                <h2 className="text-2xl font-bold mb-4">Your Voted Elections</h2>
+                {feedback && <p className="text-green-600 mb-4">{feedback}</p>}
+                <ul className="grid grid-cols-3 gap-4">
+                    {elections.map((election, index) => (
+                        <li key={index} className="p-4 bg-gray-100 rounded-lg shadow-md">
+                            <p className="text-lg font-medium"><strong>Election ID:</strong> {election.electionID}</p>
+                            <p><strong>Description:</strong> {election.description}</p>
+                            <p><strong>Voting Start:</strong> {new Date(election.votingStart * 1000).toLocaleString()}</p>
+                            <p><strong>Voting End:</strong> {new Date(election.votingEnd * 1000).toLocaleString()}</p>
+                            <p>
+                                <strong>Status:</strong>{" "}
+                                {Date.now() >= election.votingEnd * 1000 ? (
+                                    <span className="text-red-500">Results</span>
+                                ) : (
+                                    <span className="text-green-500">Election Ongoing</span>
+                                )}
+                            </p>
+                            <button 
+                                onClick={() => fetchCandidates(election.electionID)} 
+                                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
+                            >
+                                View Candidates
+                            </button>
+                            {electionID === election.electionID && candidates.length > 0 && (
+                                <div className="col-span-3 mt-4">
+                                    <table className="min-w-full border-collapse border border-gray-300 shadow-md rounded-lg">
+                                        <thead className="bg-gradient-to-r from-blue-500 to-blue-700 text-white">
+                                            <tr>
+                                                <th className="border border-gray-300 p-2">Index No</th>
+                                                <th className="border border-gray-300 p-2">Candidate Name</th>
+                                                <th className="border border-gray-300 p-2">Votes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {candidates.map(candidate => (
+                                                <tr key={candidate.index}>
+                                                    <td className="border border-gray-300 p-2">{candidate.index}</td>
+                                                    <td className="border border-gray-300 p-2">{candidate.name}</td>
+                                                    <td className="border border-gray-300 p-2">{candidate.votes}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            </div>
         </div>
     );
 };
